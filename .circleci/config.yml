@@ -27,7 +27,7 @@ jobs:
           name: Test API Response
           command: |
             sleep 5
-            curl --fail http://localhost:3000 || exit 1
+            curl --fail http://localhost:8080 || exit 1
 
   deploy:
     docker:
