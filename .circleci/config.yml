@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  docker: circleci/docker@2.3.0  # Utilisation de l'orb Docker officielle
+  docker: circleci/docker@2.3.0
 
 executors:
   vm-executor:
@@ -22,10 +22,16 @@ jobs:
           image: my-node-app
           tag: latest
 
+      - run:
+          name: Tag the Docker image with Docker Hub username
+          command: |
+            docker tag my-node-app:latest $DOCKERHUB_USERNAME/my-node-app:latest
+            docker images  # Vérifier que l'image est bien taguée
+
       - docker/push:
-          image: my-node-app
+          image: $DOCKERHUB_USERNAME/my-node-app
           tag: latest
-          registry: docker.io/$DOCKERHUB_USERNAME
+          registry: docker.io
 
       - run:
           name: Run Docker container
