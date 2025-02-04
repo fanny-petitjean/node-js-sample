@@ -1,81 +1,42 @@
 version: 2.1
 
+executors:
+  linux-executor:
+    docker:
+      - image: circleci/python:3.8  # Utilisation d'une image Docker de base avec Python (on peut remplacer par d'autres si besoin)
+    working_directory: ~/repo
+
 jobs:
   build:
-    machine:
-      image: ubuntu-2204:current  # Lance une VM Ubuntu 22.04
+    executor: linux-executor
     steps:
-      - checkout  # Récupère le code source
+      - checkout  # Récupère le code du dépôt
       - run:
-          name: Install Docker
+          name: Installer Docker
           command: |
             sudo apt-get update
             sudo apt-get install -y docker.io
-            sudo usermod -aG docker $USER
-            newgrp docker
       - run:
-          name: Build Docker Image
-          command: docker build -t my-node-app .
-
-  test:
-    machine:
-      image: ubuntu-2204:current  # Utilise aussi une VM Ubuntu
-    steps:
-      - checkout
-      - run:
-          name: Install Docker
+          name: Construire l'image Docker
           command: |
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo usermod -aG docker $USER
-            newgrp docker
+            docker build -t node-js-app .
       - run:
-          name: Build Docker Image
-          command: docker build -t my-node-app .
-      - run:
-          name: Run Docker Container
-          command: docker run -d -p 3000:3000 --name test-container my-node-app
-      - run:
-          name: Test API Response
+          name: Lancer le conteneur Docker
           command: |
-            sleep 5
-            curl --fail http://localhost:3000 || exit 1
-
-  deploy:
-    machine:
-      image: ubuntu-2204:current
-    steps:
-      - checkout
+            docker run -d -p 8080:8080 --name node-js-container node-js-app
       - run:
-          name: Install Docker
+          name: Tester si l'application répond sur le port 8080
           command: |
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo usermod -aG docker $USER
-            newgrp docker
+            curl -f http://localhost:8080 || exit 1
       - run:
-          name: Build Docker Image
-          command: docker build -t my-node-app .
-      - run:
-          name: Login to DockerHub
-          command: echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-      - run:
-          name: Tag and Push Image
+          name: Pousser l'image Docker sur Docker Hub
           command: |
-            docker tag my-node-app $DOCKERHUB_USERNAME/my-node-app:latest
-            docker push $DOCKERHUB_USERNAME/my-node-app:latest
+            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+            docker tag node-js-app $DOCKER_USERNAME/node-js-app:latest
+            docker push $DOCKER_USERNAME/node-js-app:latest
 
 workflows:
   version: 2
-  build-test-deploy:
+  build_and_deploy:
     jobs:
       - build
-      - test:
-          requires:
-            - build
-      - deploy:
-          requires:
-            - test
-          filters:
-            branches:
-              only: main
