@@ -1,43 +1,47 @@
 version: 2.1
 
+executors:
+  vm-executor:
+    machine: true
+    working_directory: ~/app
+
 jobs:
   build:
-    machine: true  # Utilise une machine virtuelle pour l'exécution du job
+    executor: vm-executor
     steps:
-      - checkout  # Récupère le code source du projet
+      - checkout
 
       - run:
-          name: Installer Docker
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo systemctl start docker
-            sudo systemctl enable docker
+          name: Check Docker version
+          command: docker --version
 
       - run:
-          name: Construire l'image Docker
-          command: |
-            docker build -t node-app .
+          name: Build Docker image
+          command: docker build -t my-node-app .
 
       - run:
-          name: Démarrer l'image Docker
-          command: |
-            docker run -d -p 8080:8080 --name node-app node-app
+          name: Authenticate with Docker Hub using token
+          command: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 
       - run:
-          name: Tester que le service répond
+          name: Tag and Push Docker image
           command: |
-            curl --silent --fail http://localhost:8080 || (echo "Le serveur n'a pas répondu comme prévu!" && exit 1)
+            docker tag my-node-app $DOCKERHUB_USERNAME/my-node-app:latest
+            docker push $DOCKERHUB_USERNAME/my-node-app:latest
 
       - run:
-          name: Push l'image Docker sur DockerHub si le test est réussi
+          name: Run the Docker container
           command: |
-            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-            docker tag node-app $DOCKER_USERNAME/node-app:latest
-            docker push $DOCKER_USERNAME/node-app:latest
+            docker run -d -p 8080:8080 my-node-app
+
+      - run:
+          name: Test if Docker container is responding on the / route
+          command: |
+            sleep 5 
+            curl --fail http://127.0.0.1:8080/ || exit 1  
 
 workflows:
   version: 2
-  build_and_deploy:
+  build_and_push:
     jobs:
       - build
