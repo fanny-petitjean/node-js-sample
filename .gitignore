@@ -1,0 +1,39 @@
+# Dépendances Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Fichiers d'environnement
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build et cache
+dist/
+build/
+.cache/
+.tmp/
+coverage/
+.nyc_output/
+.DS_Store
+
+# Logs PM2
+pm2.log
+pm2.pid
+
+# Docker
+docker-compose.override.yml
+docker-compose.override.yaml
