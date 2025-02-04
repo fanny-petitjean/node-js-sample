@@ -1,39 +1,85 @@
 version: 2.1
 
-executors:
-  linux-executor:
-    docker:
-      - image: circleci/python:3.8  # Utilisation d'une image Docker de base avec Python (on peut remplacer par d'autres si besoin)
-    working_directory: ~/repo
-
 jobs:
   build:
-    executor: linux-executor
+    docker:
+      - image: cimg/node:16.19  # Utilisation de l'image Docker Node.js officielle
+    machine: true  # Permet l'utilisation d'une machine virtuelle Linux
     steps:
-      - checkout  # Récupère le code du dépôt
+      - checkout  # Récupère le code source du projet
       - run:
           name: Installer Docker
           command: |
             sudo apt-get update
             sudo apt-get install -y docker.io
+            sudo systemctl start docker
+            sudo systemctl enable docker
+
       - run:
           name: Construire l'image Docker
           command: |
-            docker build -t node-js-app .
+            docker build -t node-app .
+
       - run:
-          name: Lancer le conteneur Docker
+          name: Démarrer l'image Docker
           command: |
-            docker run -d -p 8080:8080 --name node-js-container node-js-app
+            docker run -d -p 8080:8080 --name node-app node-app
+
       - run:
-          name: Tester si l'application répond sur le port 8080
+          name: Tester que le service répond
           command: |
-            curl -f http://localhost:8080 || exit 1
+            curl --silent --fail http://localhost:8080 || (echo "Le serveur n'a pas répondu comme prévu!" && exit 1)
+
       - run:
-          name: Pousser l'image Docker sur Docker Hub
+          name: Push l'image Docker sur DockerHub si le test est réussi
           command: |
-            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-            docker tag node-js-app $DOCKER_USERNAME/node-js-app:latest
-            docker push $DOCKER_USERNAME/node-js-app:latest
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            docker tag node-app $DOCKER_USERNAME/node-app:latest
+            docker push $DOCKER_USERNAME/node-app:latest
+
+workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - build
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/node:16.19  # Utilisation de l'image Docker Node.js officielle
+    machine: true  # Permet l'utilisation d'une machine virtuelle Linux
+    steps:
+      - checkout  # Récupère le code source du projet
+      - run:
+          name: Installer Docker
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo systemctl start docker
+            sudo systemctl enable docker
+
+      - run:
+          name: Construire l'image Docker
+          command: |
+            docker build -t node-app .
+
+      - run:
+          name: Démarrer l'image Docker
+          command: |
+            docker run -d -p 8080:8080 --name node-app node-app
+
+      - run:
+          name: Tester que le service répond
+          command: |
+            curl --silent --fail http://localhost:8080 || (echo "Le serveur n'a pas répondu comme prévu!" && exit 1)
+
+      - run:
+          name: Push l'image Docker sur DockerHub si le test est réussi
+          command: |
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            docker tag node-app $DOCKER_USERNAME/node-app:latest
+            docker push $DOCKER_USERNAME/node-app:latest
 
 workflows:
   version: 2
